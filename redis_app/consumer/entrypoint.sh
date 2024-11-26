@@ -11,3 +11,4 @@ done
 echo "Redis started"
 
 exec "$@"
+ 
