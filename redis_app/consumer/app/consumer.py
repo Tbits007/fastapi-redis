@@ -1,29 +1,23 @@
-import aio_pika
+import asyncio
+from redis import asyncio as aioredis
 from app.config import settings
-from aio_pika.abc import AbstractRobustConnection
 
 
-async def create_connection() -> AbstractRobustConnection:
-    connection = await aio_pika.connect_robust(
-        settings.amqp_url,
-    )
-    return connection
+async def consume():
+    redis = await aioredis.from_url(settings.redis_url)
+    pubsub = redis.pubsub()
+    channel_name = "test_channel"
+    
+    # Подписываемся на канал
+    await pubsub.subscribe(channel_name)
 
-
-async def consume() -> None:
-    connection = await create_connection()
-    queue_name = "test_queue"
-
-    async with connection:
-        # Creating channel
-        channel = await connection.channel()
-        # Will take no more than 10 messages in advance
-        await channel.set_qos(prefetch_count=10)
-        # Declaring queue
-        queue = await channel.declare_queue(queue_name, auto_delete=True)
-        
+    try:
         while True:
-            async with queue.iterator() as queue_iter:
-                async for message in queue_iter:
-                    async with message.process():
-                        print(message.body.decode())
+            message = await pubsub.get_message(ignore_subscribe_messages=True)
+            if message:
+                print(f"Received: {message['data'].decode('utf-8')}")
+            await asyncio.sleep(0.1)
+    except asyncio.CancelledError:
+        await pubsub.unsubscribe(channel_name)
+        print("Unsubscribed and exiting...")
+

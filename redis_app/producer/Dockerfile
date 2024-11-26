@@ -11,6 +11,7 @@ ENV PYTHONUNBUFFERED 1
 # install system dependencies
 RUN apt-get update \
     && apt-get -y install netcat-openbsd \
+    && apt-get -y install python3-distutils \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
