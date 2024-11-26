@@ -1,0 +1,44 @@
+# docker-compose down --volumes
+# docker-compose up --build 
+services:
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+
+  consumer:
+    build: ./redis_app/consumer
+    container_name: consumer
+    command: uvicorn app.main:app --reload --workers 1 --host 0.0.0.0 --port 8000
+    restart: always
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    volumes:
+      - ./redis_app/consumer:/app
+
+  producer:
+    build: ./redis_app/producer
+    container_name: producer
+    command: uvicorn app.main:app --reload --workers 1 --host 0.0.0.0 --port 8000
+    restart: always
+    ports:
+      - 8080:8000
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    volumes:
+      - ./redis_app/producer:/app
+
+volumes:
+  redis-data:
+  consumer:
+  producer:
